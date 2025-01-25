@@ -1,0 +1,29 @@
+services:
+  app:
+    build: .
+    ports:
+      - "80:5000"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - API_KEY=f5b99cad1071fc0904f92681a192a193  # Replace with your API key
+    volumes:
+      - ./app:/app  # Mount the app folder
+      - ./templates:/app/templates  # Mount the templates folder
+      - ./static:/app/static  # Mount the static folder
+
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: weather_db
+      POSTGRES_USER: weatheradmin
+      POSTGRES_PASSWORD: 1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db-init/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  postgres_data:

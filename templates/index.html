@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+
+	<style>
+	    body {
+        	font-family: Arial, sans-serif;
+	        margin: 0;
+        	padding: 0;
+	        height: 100vh; /* Full viewport height */	
+	        display: flex;
+	        justify-content: center; /* Center horizontally */
+	        align-items: center; /* Center vertically */
+	        background-color: #87CEEB; /* Fallback background color (sky blue) */
+        	overflow: hidden; /* Hide overflow from the video */
+	    }
+
+	    #background-video {
+	        position: fixed;
+        	top: 0;
+	        left: 0;
+        	width: 100%;
+	        height: 100%;
+	        object-fit: cover; /* Ensure the video covers the entire background */
+        	z-index: -1; /* Place the video behind other content */
+	    }
+
+	    #content {
+	        background: rgba(255, 255, 255, 0.8); /* Semi-transparent white background */
+        	padding: 20px;
+	        border-radius: 10px;
+        	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Optional: Add a shadow */
+	        text-align: center; /* Center text inside the content */
+        	z-index: 1; /* Place the content above the video */
+	    }
+
+	    #search-box {
+	        width: 300px;
+        	padding: 10px;
+	        font-size: 16px;
+        	margin-bottom: 10px; /* Space below the search box */
+	    }
+
+	    #suggestions {
+        	border: 1px solid #ccc;
+	        max-height: 150px;
+        	overflow-y: auto;
+	        width: 320px;
+        	margin: 0 auto; /* Center the suggestions box */
+	    }
+
+	    .suggestion-item {
+        	padding: 10px;
+	        cursor: pointer;
+	    }
+
+	    .suggestion-item:hover {
+        	background-color: #f0f0f0;
+	    }
+
+	    #weather-result {
+        	margin-top: 20px;
+	    }
+	</style>
+</head>
+
+
+
+<body>
+    <video id="background-video" autoplay muted loop>
+        <source src="" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    <div id="content">
+        <h1>Weather App</h1>
+        <input type="text" id="search-box" placeholder="Enter a city name">
+        <div id="suggestions"></div>
+        <div id="weather-result"></div>
+    </div>
+
+    <script>
+        const videos = [
+            "./static/weather.mp4"
+        ];
+        const randomVideo = videos[Math.floor(Math.random() * videos.length)];
+
+        // Set the video source
+        const videoElement = document.getElementById("background-video");
+        videoElement.src = randomVideo;
+
+        // Fallback: If the video fails to load, hide it and show the default background
+        videoElement.addEventListener("error", () => {
+            videoElement.style.display = "none"; // Hide the video
+        });
+
+
+        const searchBox = document.getElementById("search-box");
+        const suggestionsDiv = document.getElementById("suggestions");
+        const weatherResultDiv = document.getElementById("weather-result");
+        const API_KEY = "f5b99cad1071fc0904f92681a192a193";  // Replace with your API key
+
+        searchBox.addEventListener("input", () => {
+            const input = searchBox.value.trim();
+            if (input.length >= 3) {  // Only fetch suggestions if input is at least 3 characters
+                fetchCitySuggestions(input);
+            } else {
+                suggestionsDiv.innerHTML = "";  // Clear suggestions if input is too short
+            }
+        });
+
+        async function fetchCitySuggestions(query) {
+            const url = `http://api.openweathermap.org/geo/1.0/direct?q=${query}&limit=5&appid=${API_KEY}`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                showSuggestions(data);
+            } catch (error) {
+                console.error("Error fetching city suggestions:", error);
+            }
+        }
+
+        function showSuggestions(cities) {
+            suggestionsDiv.innerHTML = "";
+            cities.forEach(city => {
+                const div = document.createElement("div");
+                div.className = "suggestion-item";
+                div.textContent = `${city.name}, ${city.country}`;  // Display city name and country
+                div.addEventListener("click", () => {
+                    searchBox.value = city.name;  // Fill the search box with the selected city
+                    suggestionsDiv.innerHTML = "";  // Clear suggestions
+                    fetchWeather(city.name);  // Fetch weather for the selected city
+                });
+                suggestionsDiv.appendChild(div);
+            });
+        }
+
+	async function fetchWeather(city) {
+		const response = await fetch("/get_weather", {
+       			method: "POST",
+        		headers: {
+		            "Content-Type": "application/json"
+        		},
+        		body: JSON.stringify({ city })
+		});
+		const data = await response.json();
+		if (data.error) {
+		        weatherResultDiv.textContent = data.error;
+		} else {
+		        weatherResultDiv.innerHTML = `
+		            <h2>Weather in ${data.city}</h2>
+		            <p>Temperature: ${data.temperature}°C (Feels like: ${data.feels_like}°C)</p>
+		            <p>Condition: ${data.weather_condition} (${data.weather_description})</p>
+		            <p>Wind Speed: ${data.wind_speed} m/s (${(data.wind_speed * 3.6).toFixed(2)} km/h)</p>
+		            <p>Wind Direction: ${getWindDirection(data.wind_deg)}</p>
+		            <p>Humidity: ${data.humidity}%</p>
+		        `;
+    		}
+	}
+
+	// Helper function to convert wind degrees to direction
+	function getWindDirection(degrees) {
+		const directions = ["North", "North-East", "East", "South-East", "South", "South-West", "West", "North-West"];
+		const index = Math.round((degrees % 360) / 45);
+    		return directions[index % 8];
+	}
+
+    </script>
+</body>
+</html>
